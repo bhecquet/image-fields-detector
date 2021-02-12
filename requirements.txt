@@ -1,0 +1,5 @@
+numpy == 1.17
+opencv-python >= 4.1
+pillow
+pytesseract
+matplotlib
