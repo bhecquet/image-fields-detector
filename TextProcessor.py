@@ -21,12 +21,16 @@ class TextBox:
         self.width = width
         self.height = height
         self.text = text
+        self.right = left + width
+        self.bottom = top + height
         
     def zoom(self, ratio):
         self.left = int(self.left * ratio)
         self.top = int(self.top * ratio)
         self.width = int(self.width * ratio)
         self.height = int(self.height * ratio)
+        self.right = self.left + self.width
+        self.bottom = self.top + self. height
         
     def __eq__(self, other):
         return self.text == other.text and self.top == other.top and self.left == other.left and self.width == other.width and self.height == other.height 
@@ -122,9 +126,9 @@ class TextProcessor:
             box.zoom(1./zoom_ratio)
             
         # for debug
-        for box in texts.values():
-            cv2.rectangle(source_image, (box.left, box.top), (box.left + box.width, box.top + box.height), (0, 255, 0), 1)
-        cv2.imshow('img', source_image)
+        # for box in texts.values():
+            # cv2.rectangle(source_image, (box.left, box.top), (box.left + box.width, box.top + box.height), (0, 255, 0), 1)
+        # cv2.imshow('img', source_image)
         
         return texts
  

@@ -1,11 +1,13 @@
+from _ssl import txt2obj
 import argparse
 import logging
-from _ssl import txt2obj
-from numpy import source
-from image_processor.Processor import Processor
-import time
-import torch
 import os
+import time
+
+import torch
+
+from Processor import Processor
+from TextProcessor import TextProcessor
 
 
 def delete_old_files(path):
@@ -29,19 +31,15 @@ if __name__ == '__main__':
     parser.add_argument('img_path', help="Path where pictures should be placed")
     parser.add_argument('info_path', help="Path where information about detected zones will be published")
     parser.add_argument('--weights', type=str, default='best_web-generated-yolov3-spp_50.pt', help='weights path')
-    parser.add_argument('--cfg', type=str, default='web-generated-yolov3-spp.cfg', help='*.cfg path')
-    parser.add_argument('--names', type=str, default='web-generated.names', help='*.names path')
     parser.add_argument('--archive', default=False, type=bool, help='whether to archive picture and discovery in archve folder')
     parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1) or cpu')
     parser.add_argument('--fake', default=False, type=bool, help='whether to simulate zone discovery')
+    parser.add_argument('--language', default='eng', type=str, help='detection language')
     opt = parser.parse_args()
 
     processor = Processor(opt.weights,
-                          opt.cfg,
-                          opt.names,
                           opt.info_path,
                           opt.device,
-                          image_size=1600,
                           fake_mode=opt.fake,
                           archive_mode=opt.archive)
     
@@ -50,6 +48,8 @@ if __name__ == '__main__':
         
         with torch.no_grad():
             processor.detect(opt.img_path)
+            
+        
         
         # wait
         time.sleep(5)
