@@ -23,6 +23,7 @@ from tqdm import tqdm
 from utils.general import check_requirements, xyxy2xywh, xywh2xyxy, xywhn2xyxy, xyn2xy, segment2box, segments2boxes, \
     resample_segments, clean_str, check_img_size
 from utils.torch_utils import torch_distributed_zero_first
+import unidecode
 
 # Parameters
 help_url = 'https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data'
@@ -177,7 +178,10 @@ class LoadImages:  # for inference
         else:
             # Read image
             self.count += 1
-            img0 = cv2.imread(path)  # BGR
+            path_no_space = unidecode.unidecode(path.replace(' ', '_'))
+            os.rename(path, path_no_space)
+            path = path_no_space
+            img0 = cv2.imread(path.replace('\\', '/'))  # BGR
             assert img0 is not None, 'Image Not Found ' + path
             print(f'image {self.count}/{self.nf} {path}: ', end='')
             

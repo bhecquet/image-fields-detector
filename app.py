@@ -14,6 +14,7 @@ from Processor import Processor
 from werkzeug.utils import secure_filename
 import threading
 from werkzeug.exceptions import abort
+from unidecode import unidecode
 
 app = Flask(__name__)
 processor = None
@@ -84,6 +85,8 @@ def get_debug_file():
             abort(400, description="'image' parameter is mandatory")
         elif image_name in os.listdir(app.config['OUTPUT_FOLDER']):
             return send_from_directory(app.config["OUTPUT_FOLDER"], image_name)
+        elif unidecode.unidecode(image_name.replace(' ', '_')) in os.listdir(app.config['OUTPUT_FOLDER']):
+            return send_from_directory(app.config["OUTPUT_FOLDER"], unidecode.unidecode(image_name.replace(' ', '_')))
         else:
             abort(404, description="image '%s' not found" % image_name)
 
@@ -101,6 +104,8 @@ if __name__ == "__main__":
     parser.add_argument('--language', default='eng', type=str, help='detection language')
     opt = parser.parse_args()
     
+    if unidecode(os.path.abspath(opt.img_path)) != os.path.abspath(opt.img_path):
+        raise Exception("Image Path must not contain accents")
     
     processor = Processor(opt.weights,
                           opt.info_path,
