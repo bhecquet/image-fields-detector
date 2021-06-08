@@ -3,7 +3,7 @@ Created on 7 juin 2021
 
 @author: S047432
 '''
-from flask import Flask, request, flash, redirect
+from flask import Flask, request, send_from_directory
 import argparse
 import logging
 import os
@@ -13,6 +13,7 @@ import torch
 from Processor import Processor
 from werkzeug.utils import secure_filename
 import threading
+from werkzeug.exceptions import abort
 
 app = Flask(__name__)
 processor = None
@@ -56,20 +57,35 @@ def upload_file():
     
     if request.method == 'POST':
         if 'image' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
+            abort(400, description="image not found")
 
         file = request.files['image']
         
         if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
+            abort(400, description="File name is empty")
         
         filename = secure_filename(file.filename)
         
         saved_file = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(saved_file)
         return processor.detect(saved_file)
+    
+@app.route('/debug', methods = ['GET', 'POST'])
+def get_debug_file():
+    """
+    to test: curl http://127.0.0.1:5000/debug?image=out-7.jpg --output toto.jpg
+    """
+    
+    if request.method == 'GET':
+        
+        image_name = request.args.get('image')
+        
+        if image_name is None:
+            abort(400, description="'image' parameter is mandatory")
+        elif image_name in os.listdir(app.config['OUTPUT_FOLDER']):
+            return send_from_directory(app.config["OUTPUT_FOLDER"], image_name)
+        else:
+            abort(404, description="image '%s' not found" % image_name)
 
 if __name__ == "__main__":
     
@@ -96,6 +112,7 @@ if __name__ == "__main__":
 
     
     app.config['UPLOAD_FOLDER'] = os.path.abspath(opt.img_path) + os.sep + 'api'
+    app.config['OUTPUT_FOLDER'] = os.path.abspath(opt.info_path) 
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     app.run()
