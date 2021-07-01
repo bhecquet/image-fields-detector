@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 import threading
 from werkzeug.exceptions import abort
 from unidecode import unidecode
+from flask.helpers import make_response
 
 app = Flask(__name__)
 processor = None
@@ -32,11 +33,12 @@ class ProcessorThread(threading.Thread):
     
         for f in os.listdir(path):
             
-            if time.time() - os.stat(os.path.join(path, f)).st_mtime > 60 * 60 * 24:
+            file_path = os.path.join(path, f)
+            if time.time() - os.stat(file_path).st_mtime > 60 * 60 * 24 and os.path.isfile(file_path):
                 try:
-                    os.remove(os.path.join(path, f))
+                    os.remove(file_path)
                 except Exception as e:
-                    logging.warn("cannot delete file: " + f)
+                    logging.warning("cannot delete file: " + f)
     
     def run(self):
         while True:
@@ -49,10 +51,15 @@ class ProcessorThread(threading.Thread):
             # delete old processed files
             self.delete_old_files(self.output_directory)
     
+@app.route('/status', methods = ['GET'])
+def status():
+    return "OK"
 
 @app.route('/detect', methods = ['POST'])
-def upload_file():
+def detect():
     """
+    Method to send an image and get detection data (POST)
+    
     to test: curl -F "image=@D:\Dev\yolo\yolov3\dataset_generated_small\out-7.jpg"   http://127.0.0.1:5000/detect
     """
     
@@ -69,7 +76,14 @@ def upload_file():
         
         saved_file = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(saved_file)
-        return processor.detect(saved_file)
+        detection_data = processor.detect(saved_file)
+        if not detection_data:
+            return make_response({'error': "Error in detection"}, 500)
+        elif detection_data['error']:
+            return make_response(detection_data, 500)
+        else:
+            return detection_data
+
     
 @app.route('/debug', methods = ['GET', 'POST'])
 def get_debug_file():
@@ -120,4 +134,4 @@ if __name__ == "__main__":
     app.config['OUTPUT_FOLDER'] = os.path.abspath(opt.info_path) 
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
-    app.run()
+    app.run(host="0.0.0.0")

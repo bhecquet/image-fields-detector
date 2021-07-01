@@ -39,6 +39,8 @@ class ObjectBox:
         self.text = None
         self.related_field = None
         self.with_label = class_name.endswith('with_label')
+        self.width = right - left
+        self.height = bottom - top
         
     def to_dict(self):
         d = vars(self)
@@ -132,12 +134,13 @@ class Processor:
         @param source: the image source (folder or single file)
         """
         
-        detection_data = {}
+        detection_data = {'error': None}
 
         try:
             dataset = LoadImages(source, 1600, stride = int(self.model.stride.max())) 
         except AssertionError as e:
-            return
+            detection_data['error'] = str(e)
+            return detection_data
         
         if self.fake_mode:
             for path, img, im0s, vid_cap in dataset:
@@ -277,9 +280,9 @@ class Processor:
         self.correlate_text_and_fields(text_boxes, boxes)
             
         # create output file
-        detection_data_for_img = json.dumps({'fields': [b.to_dict() for b in boxes], 'labels': [vars(b) for b in text_boxes.values()]})
+        detection_data_for_img = {'fields': [b.to_dict() for b in boxes], 'labels': [vars(b) for b in text_boxes.values()]}
         with open(os.path.join(self.output_directory, Path(path).stem + '.json'), 'w') as json_file:
-            json_file.write(detection_data_for_img)
+            json_file.write(json.dumps(detection_data_for_img))
             
         return detection_data_for_img
 
