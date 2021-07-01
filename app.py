@@ -133,5 +133,6 @@ if __name__ == "__main__":
     app.config['UPLOAD_FOLDER'] = os.path.abspath(opt.img_path) + os.sep + 'api'
     app.config['OUTPUT_FOLDER'] = os.path.abspath(opt.info_path) 
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
     
     app.run(host="0.0.0.0")
