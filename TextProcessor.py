@@ -25,13 +25,16 @@ class TextBox:
         self.bottom = top + height
         
     def zoom(self, ratio):
+        """
+        Resize this TextBox
+        """
         self.left = int(self.left * ratio)
         self.top = int(self.top * ratio)
         self.width = int(self.width * ratio)
         self.height = int(self.height * ratio)
         self.right = self.left + self.width
         self.bottom = self.top + self. height
-        
+    
     def __eq__(self, other):
         return self.text == other.text and self.top == other.top and self.left == other.left and self.width == other.width and self.height == other.height 
         
@@ -55,7 +58,7 @@ class TextProcessor:
         return cv2.medianBlur(image,5)
     
     def enlarge(self, image, ratio):
-        return cv2.resize(image, (image.shape[1] * ratio, image.shape[0] * ratio), interpolation = cv2.INTER_CUBIC) 
+        return cv2.resize(image, (round(image.shape[1] * ratio), round(image.shape[0] * ratio)), interpolation = cv2.INTER_CUBIC) 
     
     # dilation
     def dilate(self, image):
@@ -72,14 +75,14 @@ class TextProcessor:
         kernel = np.ones((5,5),np.uint8)
         return cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
        
-    def get_text_boxes(self, image_path: str):
+    def get_text_boxes(self, image_path: str, resize_factor: float):
         """
         Build text boxes based on tesseract detection
         It should put in the same box, words which are on the same line and close together 
         """
         texts = OrderedDict()
         
-        zoom_ratio = 2
+        zoom_ratio = 2 / resize_factor
         
         source_image = cv2.imread(image_path)
         

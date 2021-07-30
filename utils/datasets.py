@@ -121,7 +121,7 @@ class _RepeatSampler(object):
 
 
 class LoadImages:  # for inference
-    def __init__(self, path, img_size=640, stride=32):
+    def __init__(self, path, img_size=640, stride=32, resize_factor=1):
         p = str(Path(path).absolute())  # os-agnostic absolute path
         if '*' in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
@@ -137,6 +137,7 @@ class LoadImages:  # for inference
         ni, nv = len(images), len(videos)
 
         self.img_size = img_size
+        self.resize_factor = resize_factor
         self.stride = stride
         self.files = images + videos
         self.nf = ni + nv  # number of files
@@ -185,8 +186,8 @@ class LoadImages:  # for inference
             assert img0 is not None, 'Image Not Found ' + path
             print(f'image {self.count}/{self.nf} {path}: ', end='')
             
-            # set image size to width of picture
-            self.img_size = check_img_size(img0.shape[1], s=self.stride)
+            # set image size to width of picture (with resizing if requested)
+            self.img_size = check_img_size(int(img0.shape[1] * self.resize_factor), s=self.stride)
 
         # Padded resize
         img = letterbox(img0, self.img_size, stride=self.stride)[0]

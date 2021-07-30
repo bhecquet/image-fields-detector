@@ -16,6 +16,7 @@ import threading
 from werkzeug.exceptions import abort
 from unidecode import unidecode
 from flask.helpers import make_response
+from PIL import Image
 
 app = Flask(__name__)
 processor = None
@@ -64,8 +65,11 @@ def detect():
     """
     
     if request.method == 'POST':
+        
+        
         if 'image' not in request.files:
             abort(400, description="image not found")
+        factor = request.form.get('resize', 1, type=float)
 
         file = request.files['image']
         
@@ -76,7 +80,8 @@ def detect():
         
         saved_file = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(saved_file)
-        detection_data = processor.detect(saved_file)
+
+        detection_data = processor.detect(saved_file, factor)
         if not detection_data:
             return make_response({'error': "Error in detection"}, 500)
         elif detection_data['error']:
@@ -127,7 +132,7 @@ if __name__ == "__main__":
                           fake_mode=opt.fake,
                           archive_mode=opt.archive)
     
-    ProcessorThread(processor, opt.img_path, opt.img_path).start()
+    ProcessorThread(processor, opt.img_path, opt.info_path).start()
 
     
     app.config['UPLOAD_FOLDER'] = os.path.abspath(opt.img_path) + os.sep + 'api'

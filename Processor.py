@@ -24,6 +24,8 @@ import cv2
 from utils.plots import plot_one_box
 from TextProcessor import TextProcessor
 import json
+import math
+from collections import OrderedDict
 
 
 ObjectBox = collections.namedtuple('ObjectBox', ['class_id', 'x_min', 'x_max', 'y_min', 'y_max'])
@@ -127,17 +129,18 @@ class Processor:
         return device, model, colors
     
     @torch.no_grad()
-    def detect(self, source):
+    def detect(self, source, resize_factor=1):
         """
         Detect area in JPG image
         
         @param source: the image source (folder or single file)
+        @param resize_factor: factor applied to the original image to reduce it
         """
         
         detection_data = {'error': None}
 
         try:
-            dataset = LoadImages(source, 1600, stride = int(self.model.stride.max())) 
+            dataset = LoadImages(source, 1600, stride = int(self.model.stride.max()), resize_factor=resize_factor) 
         except AssertionError as e:
             detection_data['error'] = str(e)
             return detection_data
@@ -174,7 +177,9 @@ class Processor:
    
                 try:
                     
-                    detection_data_for_img = self.detect_fields(path, img, im0s)
+                    detection_data_for_img = self.detect_fields(path, img, im0s, resize_factor)
+                    
+                    
                     detection_data[Path(path).name] = detection_data_for_img
                 
                 except Exception as e:
@@ -190,12 +195,13 @@ class Processor:
             
         return detection_data
     
-    def detect_fields(self, path, img, im0s):
+    def detect_fields(self, path, img, im0s, resize_factor):
         """
         Detect fields on image
         @param path: path to the image
         @param img: image on which we search fields
         @param im0s: image with detected fields
+        @param resize_factor: factor applied to the original image to reduce it
         """
         save_path = str(Path(self.output_directory) / Path(path).name)
         class_file = save_path[:save_path.rfind('.')] + '.txt'
@@ -276,9 +282,9 @@ class Processor:
             
         # process text on image to match detected boxes with labels
         text_processor = TextProcessor(self.language)
-        text_boxes = text_processor.get_text_boxes(path)
+        text_boxes = text_processor.get_text_boxes(path, resize_factor)
         self.correlate_text_and_fields(text_boxes, boxes)
-            
+
         # create output file
         detection_data_for_img = {'fields': [b.to_dict() for b in boxes], 'labels': [vars(b) for b in text_boxes.values()]}
         with open(os.path.join(self.output_directory, Path(path).stem + '.json'), 'w') as json_file:
@@ -319,7 +325,7 @@ class Processor:
                     and x_text_box_center < field_box.right
                     and y_text_box_center > field_box.top
                     and y_text_box_center < field_box.bottom
-                    and self.names[int(field_box.class_id)].endswith("with_label")):
+                    and field_box.with_label):
                     field_box.text = text_box.text
                     break
 
