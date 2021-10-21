@@ -19,16 +19,15 @@ from flask.helpers import make_response
 from PIL import Image
 
 app = Flask(__name__)
-processor = None
+fd_processor = None # processor for field detection
+ed_processor = None # processor for error detection
 
                 
-class ProcessorThread(threading.Thread):
+class CleaningThread(threading.Thread):
     
-    def __init__(self, processor, input_directory, output_directory):
-        self.processor = processor
+    def __init__(self, output_directory):
         self.output_directory = output_directory
-        self.input_directory = input_directory
-        super(ProcessorThread, self).__init__()
+        super(CleaningThread, self).__init__()
         
     def delete_old_files(self, path):
     
@@ -44,20 +43,13 @@ class ProcessorThread(threading.Thread):
     def run(self):
         while True:
 
-            self.processor.detect(self.input_directory)
-                
             # wait
             time.sleep(5)
             
             # delete old processed files
             self.delete_old_files(self.output_directory)
-    
-@app.route('/status', methods = ['GET'])
-def status():
-    return "OK"
-
-@app.route('/detect', methods = ['POST'])
-def detect():
+            
+def detect(processor):
     """
     Method to send an image and get detection data (POST)
     
@@ -88,6 +80,32 @@ def detect():
             return make_response(detection_data, 500)
         else:
             return detection_data
+      
+
+    
+@app.route('/status', methods = ['GET'])
+def status():
+    return "OK"
+
+@app.route('/detect', methods = ['POST'])
+def detect_fields():
+    """
+    Method to send an image and get detection data (POST)
+    
+    to test: curl -F "image=@D:\Dev\yolo\yolov3\dataset_generated_small\out-7.jpg"   http://127.0.0.1:5000/detect
+    """
+    
+    return detect(fd_processor)
+
+@app.route('/detectError', methods = ['POST'])
+def detect_error():
+    """
+    Method to send an image and get detection data for errors in forms (POST)
+    
+    to test: curl -F "image=@D:\Dev\yolo\yolov3\dataset_generated_small\out-7.jpg"   http://127.0.0.1:5000/detectError
+    """
+    
+    return detect(ed_processor)
 
     
 @app.route('/debug', methods = ['GET', 'POST'])
@@ -116,7 +134,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tool for reading JUnit results and generating results')
     parser.add_argument('img_path', help="Path where pictures should be placed")
     parser.add_argument('info_path', help="Path where information about detected zones will be published")
-    parser.add_argument('--weights', type=str, default='best_web-generated-yolov3-spp_50.pt', help='weights path')
+    parser.add_argument('--fd-weights', type=str, default='weights/field_detector.pt', help='weights path for field detection')
+    parser.add_argument('--ed-weights', type=str, default='weights/error_detector.pt', help='weights path for error detection')
     parser.add_argument('--archive', default=False, type=bool, help='whether to archive picture and discovery in archve folder')
     parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1) or cpu')
     parser.add_argument('--fake', default=False, type=bool, help='whether to simulate zone discovery')
@@ -126,13 +145,18 @@ if __name__ == "__main__":
     if unidecode(os.path.abspath(opt.img_path)) != os.path.abspath(opt.img_path):
         raise Exception("Image Path must not contain accents")
     
-    processor = Processor(opt.weights,
+    fd_processor = Processor(opt.fd_weights,
+                          opt.info_path,
+                          opt.device,
+                          fake_mode=opt.fake,
+                          archive_mode=opt.archive)
+    ed_processor = Processor(opt.ed_weights,
                           opt.info_path,
                           opt.device,
                           fake_mode=opt.fake,
                           archive_mode=opt.archive)
     
-    ProcessorThread(processor, opt.img_path, opt.info_path).start()
+    CleaningThread(opt.info_path).start()
 
     
     app.config['UPLOAD_FOLDER'] = os.path.abspath(opt.img_path) + os.sep + 'api'
