@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from collections import OrderedDict
+import time
 
 
 class TextBox:
@@ -75,22 +76,27 @@ class TextProcessor:
         kernel = np.ones((5,5),np.uint8)
         return cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
        
-    def get_text_boxes(self, image_path: str, resize_factor: float):
+    def get_text_boxes(self, image_path: str):
         """
         Build text boxes based on tesseract detection
         It should put in the same box, words which are on the same line and close together 
         """
         texts = OrderedDict()
         
-        zoom_ratio = 2 / resize_factor
+        zoom_ratio = 2
         
         source_image = cv2.imread(image_path)
         
+        start = time.time()
         grayscale_image = self.grayscale(source_image)
-        #plt.imshow(self.enlarge(self.thresholding(grayscale_image)))
+        enlarged_image = self.enlarge(grayscale_image, zoom_ratio)
+        print("image processing: " + str(time.time() - start))
         
-        detected_boxes = pytesseract.image_to_data(self.enlarge(grayscale_image, zoom_ratio), lang=self.language, output_type=Output.DICT)
+        start = time.time()
+        detected_boxes = pytesseract.image_to_data(enlarged_image, lang=self.language, output_type=Output.DICT)
+        print("tesseract: " + str(time.time() - start))
         
+        start = time.time()
         for i in range(len(detected_boxes['level'])):
             
             if int(detected_boxes['conf'][i]) < 0 or not detected_boxes['text'][i].strip():
@@ -132,6 +138,7 @@ class TextProcessor:
         # for box in texts.values():
             # cv2.rectangle(source_image, (box.left, box.top), (box.left + box.width, box.top + box.height), (0, 255, 0), 1)
         # cv2.imshow('img', source_image)
+        print("output processing: " + str(time.time() - start))
         
         return texts
  

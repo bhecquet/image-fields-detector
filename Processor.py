@@ -203,6 +203,7 @@ class Processor:
         @param im0s: image with detected fields
         @param resize_factor: factor applied to the original image to reduce it
         """
+        start = time.time()
         save_path = str(Path(self.output_directory) / Path(path).name)
         class_file = save_path[:save_path.rfind('.')] + '.txt'
         boxes = []
@@ -267,7 +268,8 @@ class Processor:
             # Save results (image with detections)
             if save_img:
                 cv2.imwrite(save_path, im0)
-                
+           
+        print(time.time() - start)     
         # create a file that can be used by labelImg to reinject this picture in training
         self.create_xml_class_file(self.output_directory, Path(path).name, img0_width, img0_height, boxes)
            
@@ -279,12 +281,14 @@ class Processor:
             
         # match fields with dependency relation
         self.correlate_fields_with_labeled_fields(boxes)
-            
+        
+        print(time.time() - start)      
         # process text on image to match detected boxes with labels
         text_processor = TextProcessor(self.language)
-        text_boxes = text_processor.get_text_boxes(path, resize_factor)
+        text_boxes = text_processor.get_text_boxes(path)
         self.correlate_text_and_fields(text_boxes, boxes)
 
+        print(time.time() - start)  
         # create output file
         detection_data_for_img = {'fields': [b.to_dict() for b in boxes], 'labels': [vars(b) for b in text_boxes.values()]}
         with open(os.path.join(self.output_directory, Path(path).stem + '.json'), 'w') as json_file:
