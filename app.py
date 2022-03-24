@@ -17,6 +17,33 @@ from werkzeug.exceptions import abort
 from unidecode import unidecode
 from flask.helpers import make_response
 from PIL import Image
+from logging.config import dictConfig
+
+
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {
+        'wsgi': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://flask.logging.wsgi_errors_stream',
+            'formatter': 'default'
+            },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'default',
+            'filename': 'detector.log',
+            'backupCount': 3,
+            'maxBytes': 4000
+            }
+        },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi', 'file']
+    }
+})
 
 app = Flask(__name__)
 fd_processor = None # processor for field detection
@@ -60,10 +87,12 @@ def detect(processor):
         
         
         if 'image' not in request.files:
+            logging.error("image not found")
             abort(400, description="image not found")
         factor = request.form.get('resize', 1, type=float)
 
         file = request.files['image']
+        logging.info("detecting fields for image %s" % file)
         
         if file.filename == '':
             abort(400, description="File name is empty")
@@ -129,8 +158,6 @@ def get_debug_file():
 
 if __name__ == "__main__":
     
-    logging.basicConfig(level=logging.INFO)
-    
     parser = argparse.ArgumentParser(description='Tool for reading JUnit results and generating results')
     parser.add_argument('img_path', help="Path where pictures should be placed")
     parser.add_argument('info_path', help="Path where information about detected zones will be published")
@@ -145,11 +172,15 @@ if __name__ == "__main__":
     if unidecode(os.path.abspath(opt.img_path)) != os.path.abspath(opt.img_path):
         raise Exception("Image Path must not contain accents")
     
+    
+    logging.info("loading field detector model from " + opt.fd_weights)
     fd_processor = Processor(opt.fd_weights,
                           opt.info_path,
                           opt.device,
                           fake_mode=opt.fake,
                           archive_mode=opt.archive)
+    
+    logging.info("loading error detector model from " + opt.ed_weights)
     ed_processor = Processor(opt.ed_weights,
                           opt.info_path,
                           opt.device,
