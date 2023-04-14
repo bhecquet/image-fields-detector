@@ -12,3 +12,6 @@ PyYAML>=5.3.1
 scipy>=1.4.1
 Flask
 unidecode
+dramatiq[redis, watch]
+Flask-Melodramatiq
+psutil
