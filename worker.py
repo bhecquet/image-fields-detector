@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 import dramatiq
-from dramatiq.brokers.redis import RedisBroker
+from ResourceAwareRedisBroker import ResourceAwareRedisBroker as RedisBroker
 from dramatiq.results.backends.redis import RedisBackend
 from dramatiq.results.middleware import Results
 from unidecode import unidecode
@@ -20,8 +20,6 @@ from TextProcessor import TextProcessor
 from config import *
 from logging.config import dictConfig
 
-
-# from flask_melodramatiq import RedisBroker
 processors = {'field_processor': None,
               'error_processor': None}
 
@@ -39,7 +37,7 @@ def configure():
                 'formatter': 'default',
                 'filename': 'logs/detector.log',
                 'backupCount': 3,
-                'maxBytes': 4000
+                'maxBytes': 40000000
                 }
             },
         'root': {
