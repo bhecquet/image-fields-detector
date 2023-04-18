@@ -133,7 +133,7 @@ class Processor:
         """
         Detect area in JPG image
         
-        @param source: the image source (folder or single file)
+        @param source: the image source (single file)
         @param resize_factor: factor applied to the original image to reduce it
         """
         
@@ -178,20 +178,18 @@ class Processor:
                 try:
                     
                     detection_data_for_img = self.detect_fields(path, img, im0s, resize_factor)
-                    
-                    
-                    detection_data[Path(path).name] = detection_data_for_img
+                    detection_data['data'] = detection_data_for_img
                 
                 except Exception as e:
                     traceback.print_exc()
                     logging.error("could not apply detection on {}".format(path))
-                    
-                # remove image file
-                os.remove(path)
+                
+                # analyze only one image at a time
+                break 
         
-            print('Results saved to %s' % self.output_directory)
+            logging.info('Results saved to %s' % self.output_directory)
 
-            print('Done. (%.3fs)' % (time.time() - t0))
+            logging.info('Done. (%.3fs)' % (time.time() - t0))
             
         return detection_data
     
@@ -263,13 +261,13 @@ class Processor:
                         plot_one_box(xyxy, im0, label=label, color=self.colors[int(cls)], line_thickness=1)
 
             # Print time (inference + NMS)
-            print('%sDone. (%.3fs)' % (s, t2 - t1))
+            logging.info('%sDone. (%.3fs)' % (s, t2 - t1))
 
             # Save results (image with detections)
             if save_img:
                 cv2.imwrite(save_path, im0)
            
-        print(time.time() - start)     
+        logging.info(time.time() - start)     
         # create a file that can be used by labelImg to reinject this picture in training
         self.create_xml_class_file(self.output_directory, Path(path).name, img0_width, img0_height, boxes)
            
@@ -282,19 +280,9 @@ class Processor:
         # match fields with dependency relation
         self.correlate_fields_with_labeled_fields(boxes)
         
-        print(time.time() - start)      
-        # process text on image to match detected boxes with labels
-        text_processor = TextProcessor(self.language)
-        text_boxes = text_processor.get_text_boxes(path)
-        self.correlate_text_and_fields(text_boxes, boxes)
+        logging.info(time.time() - start)      
 
-        print(time.time() - start)  
-        # create output file
-        detection_data_for_img = {'fields': [b.to_dict() for b in boxes], 'labels': [vars(b) for b in text_boxes.values()]}
-        with open(os.path.join(self.output_directory, Path(path).stem + '.json'), 'w') as json_file:
-            json_file.write(json.dumps(detection_data_for_img))
-            
-        return detection_data_for_img
+        return [b.to_dict() for b in boxes]
 
     def correlate_fields_with_labeled_fields(self, field_boxes):
         """
@@ -312,27 +300,6 @@ class Processor:
                     and y_box_center < field_box_with_label.bottom):
                     field_box_with_label.related_field = field_box_no_label
                     break
-
-    def correlate_text_and_fields(self, text_boxes, field_boxes):
-        """
-        Try to match a box discovered by tesseract and a box discovered by field recognition
-        """
-        
-        for name, text_box in text_boxes.items():
-            
-            x_text_box_center = (text_box.right - text_box.left) / 2 + text_box.left
-            y_text_box_center = (text_box.bottom - text_box.top) / 2 + text_box.top
-            
-            for field_box in field_boxes:
-                
-                if (x_text_box_center > field_box.left
-                    and x_text_box_center < field_box.right
-                    and y_text_box_center > field_box.top
-                    and y_text_box_center < field_box.bottom
-                    and field_box.with_label):
-                    field_box.text = text_box.text
-                    break
-
 
     def create_xml_class_file(self, folder, filename, image_width, image_height, boxes):
         

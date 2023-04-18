@@ -10,6 +10,7 @@ DEVICE = ''             # device id (i.e. 0 or 0,1) or cpu => device to use for 
 FAKE = False            # whether to simulate zone discovery
 LANGUAGE = 'eng'        # detection language used by tesseract
 #DRAMATIQ_BROKER = RedisBroker
-DRAMATIQ_BROKER_URL = "${redis_url}" # url of redis 'redis://<server>:<port>/0'
+DRAMATIQ_BROKER_URL = "${redis_url}" # url of redis 'redis://<server>:6379/0'
+CPU_LIMIT = 20          # max CPU load above which no computation will be done
     
 

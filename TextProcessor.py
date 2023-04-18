@@ -4,14 +4,17 @@ Created on 11 févr. 2021
 @author: S047432
 '''
 
+from collections import OrderedDict
+import logging
+import time
+
 from PIL import Image
+import cv2
+from matplotlib import pyplot as plt
 import pytesseract
 from pytesseract.pytesseract import Output
-import cv2
+
 import numpy as np
-from matplotlib import pyplot as plt
-from collections import OrderedDict
-import time
 
 
 class TextBox:
@@ -41,6 +44,9 @@ class TextBox:
         
     def __str__(self):
         return '{} => (top={}, left={}, width={}, height={})'.format(self.text, self.top, self.left, self.width, self.height)
+    
+    def to_dict(self):
+        return vars(self)
         
 
 class TextProcessor:
@@ -90,16 +96,16 @@ class TextProcessor:
         start = time.time()
         grayscale_image = self.grayscale(source_image)
         enlarged_image = self.enlarge(grayscale_image, zoom_ratio)
-        print("image processing: " + str(time.time() - start))
+        logging.info("image processing: " + str(time.time() - start))
         
         start = time.time()
         detected_boxes = pytesseract.image_to_data(enlarged_image, lang=self.language, output_type=Output.DICT)
-        print("tesseract: " + str(time.time() - start))
+        logging.info("tesseract: " + str(time.time() - start))
         
         start = time.time()
         for i in range(len(detected_boxes['level'])):
             
-            if int(detected_boxes['conf'][i]) < 0 or not detected_boxes['text'][i].strip():
+            if int(float(detected_boxes['conf'][i])) < 0 or not detected_boxes['text'][i].strip():
                 continue
             
             text = detected_boxes['text'][i]
@@ -138,7 +144,10 @@ class TextProcessor:
         # for box in texts.values():
             # cv2.rectangle(source_image, (box.left, box.top), (box.left + box.width, box.top + box.height), (0, 255, 0), 1)
         # cv2.imshow('img', source_image)
-        print("output processing: " + str(time.time() - start))
+        logging.info("output processing: " + str(time.time() - start))
         
-        return texts
+        texts2 = OrderedDict()
+        for k,v in texts.items():
+            texts2[k] = v.to_dict()
+        return texts2
  

@@ -12,6 +12,7 @@ import psutil
 import logging
 import time
 import statistics
+from config import CPU_LIMIT
 
 class ResourceAwareRedisBroker(RedisBroker):
     
@@ -29,7 +30,7 @@ class ResourceAwareRedisBroker(RedisBroker):
         
         with ResourceAwareRedisBroker.lock:
         
-            if load > 20 and ResourceAwareRedisBroker.too_busy < 5 :
+            if load > CPU_LIMIT and ResourceAwareRedisBroker.too_busy < 5 :
                 logging.info(f"too busy {load}: {ResourceAwareRedisBroker.too_busy}")
                 ResourceAwareRedisBroker.too_busy += 1
                 time.sleep(0.1) # we are busy, let other worker take tasks
@@ -64,9 +65,9 @@ class ResourceMonitorThread(threading.Thread):
             return self.cpu_load
             
         
-RedisBroker = create_broker_class(
-    classpath='ResourceAwareRedisBroker:ResourceAwareRedisBroker',
-    docstring=LAZY_BROKER_DOCSTRING_TEMPLATE.format(
-        description='A lazy broker wrapping a :class:`~dramatiq.brokers.redis.RedisBroker`.\n',
-    ),
-)
+# RedisBroker = create_broker_class(
+    # classpath='ResourceAwareRedisBroker:ResourceAwareRedisBroker',
+    # docstring=LAZY_BROKER_DOCSTRING_TEMPLATE.format(
+        # description='A lazy broker wrapping a :class:`~dramatiq.brokers.redis.RedisBroker`.\n',
+    # ),
+# )
