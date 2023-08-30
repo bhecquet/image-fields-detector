@@ -4,9 +4,7 @@ Created on 27 oct. 2022
 @author: 
 '''
 
-from flask_melodramatiq import create_broker_class
 from dramatiq.brokers.redis import RedisBroker
-from flask_melodramatiq.lazy_broker import LAZY_BROKER_DOCSTRING_TEMPLATE
 import threading
 import psutil
 import logging
