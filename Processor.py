@@ -96,6 +96,7 @@ class Processor:
         self.augment = False
         self.agnostic_nms = False
         self.archive_directory = None
+        self.version = self._compute_weigths_hash() # version is the date of the file as there is no other information in model 
   
         if not self.fake_mode:
             self.device, self.model, self.colors = self._init_model()
@@ -105,7 +106,24 @@ class Processor:
             self.archive_directory.mkdir(exist_ok=True, parents=True)
             
         self.language = language
-    
+        
+    def _compute_weigths_hash(self):
+        import hashlib
+        
+        # BUF_SIZE is totally arbitrary, change for your app!
+        BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+        
+        md5 = hashlib.md5()
+        
+        with open(self.weights, 'rb') as f:
+            while True:
+                data = f.read(BUF_SIZE)
+                if not data:
+                    break
+                md5.update(data)
+        
+        return md5.hexdigest()[:6]
+            
     def _init_model(self):
         """
         Load model
@@ -137,7 +155,7 @@ class Processor:
         @param resize_factor: factor applied to the original image to reduce it
         """
         
-        detection_data = {'error': None}
+        detection_data = {'error': None, 'version': self.version}
 
         try:
             dataset = LoadImages(source, 1600, stride = int(self.model.stride.max()), resize_factor=resize_factor) 
@@ -177,8 +195,9 @@ class Processor:
    
                 try:
                     
-                    detection_data_for_img = self.detect_fields(path, img, im0s, resize_factor)
+                    detect_img, detection_data_for_img = self.detect_fields(path, img, im0s, resize_factor)
                     detection_data['data'] = detection_data_for_img
+                    detection_data['image'] = detect_img
                 
                 except Exception as e:
                     traceback.print_exc()
@@ -200,13 +219,16 @@ class Processor:
         @param img: image on which we search fields
         @param im0s: image with detected fields
         @param resize_factor: factor applied to the original image to reduce it
+        
+        @return: the path (pathlib) of image with field outlined
+                list of boxes containing detected fields
         """
         start = time.time()
-        save_path = str(Path(self.output_directory) / Path(path).name)
-        class_file = save_path[:save_path.rfind('.')] + '.txt'
         boxes = []
         save_img = True
         
+        save_path = Path(self.output_directory) / Path(path).name
+        class_file = save_path.with_suffix('.txt')
         try:
             os.remove(class_file)
         except:
@@ -265,7 +287,9 @@ class Processor:
 
             # Save results (image with detections)
             if save_img:
-                cv2.imwrite(save_path, im0)
+                cv2.imwrite(str(save_path), im0)
+            else:
+                save_path = None
            
         logging.info(time.time() - start)     
         # create a file that can be used by labelImg to reinject this picture in training
@@ -282,7 +306,7 @@ class Processor:
         
         logging.info(time.time() - start)      
 
-        return [b.to_dict() for b in boxes]
+        return save_path, [b.to_dict() for b in boxes]
 
     def correlate_fields_with_labeled_fields(self, field_boxes):
         """

@@ -91,6 +91,15 @@ processors['error_processor'] = ed_processor
 @dramatiq.actor(store_results=True, max_age=10000)
 def detect_remote(processor_name, imageb64, image_name, resize_factor):
     """
+    Detect fields of the image transmitted as base 64 string
+    reply has the format
+    {
+        'error': 'a possible error',
+        'version': 'model_version',
+        'image': <base64 encoded image file with bounding boxes>
+        'data': [ObjectBox1, ObjectBox2]
+    }
+    
     @param processor_name: name of the processor to use
     @param imageb64: image transmitted as a Base 64 string
     @param image_name: name of the file
@@ -102,7 +111,11 @@ def detect_remote(processor_name, imageb64, image_name, resize_factor):
         image.write(bytestring)
 
     try:
-        return processors[processor_name].detect(image.name, resize_factor)
+        detection_result = processors[processor_name].detect(image.name, resize_factor)
+        if detection_result['image']:
+            detection_result['image'] = base64.b64encode(detection_result['image'].read_bytes()).decode('utf-8')
+        
+        return detection_result
     except Exception as e:
         os.unlink(image.name)
         
